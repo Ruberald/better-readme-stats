@@ -1,14 +1,16 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "os"
-    "sort"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"sort"
 
-    godotenv "github.com/joho/godotenv"
-    "github.com/shurcooL/githubv4"
-    "golang.org/x/oauth2"
+	godotenv "github.com/joho/godotenv"
+	"github.com/shurcooL/githubv4"
+	"golang.org/x/oauth2"
 )
 
 type LanguageCommit struct {
@@ -21,12 +23,10 @@ func main() {
 
     accessToken := os.Getenv("TOKEN")
 
-    // Create a GitHub GraphQL client with your personal access token.
     src := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
     httpClient := oauth2.NewClient(context.Background(), src)
     client := githubv4.NewClient(httpClient)
 
-    // Replace with the GitHub username you want to query.
 	targetUser := "Ruberald"
 
     type CommitTarget struct {
@@ -35,8 +35,7 @@ func main() {
         }
     }
 
-	// Send the GraphQL request using the query string and variables.
-	var response struct {
+	var query struct {
 		User struct {
 			Repositories struct {
 				Edges []struct {
@@ -60,7 +59,7 @@ func main() {
 		"username": githubv4.String(targetUser),
 	}
 
-	err := client.Query(context.Background(), &response, variables)
+	err := client.Query(context.Background(), &query, variables)
 
 	if err != nil {
 		fmt.Println(err)
@@ -68,10 +67,9 @@ func main() {
 	}
 
     commitCounts := make(map[string]int)
-    // Process the response and calculate commit counts for each non-empty language.
 	totalCommits := 0
 
-	for _, edge := range response.User.Repositories.Edges {
+	for _, edge := range query.User.Repositories.Edges {
 		commitCount := edge.Node.DefaultBranchRef.Target.History.TotalCount
 		language := edge.Node.PrimaryLanguage.Name
 
@@ -94,13 +92,28 @@ func main() {
         return languageCommits[i].Commits > languageCommits[j].Commits
     })
 
-    // Display the sorted commit counts and percentages for each language.
-    fmt.Println("Commit Counts by Language (Descending Order):")
+    response := make(map[string]interface{})
+    stats := []map[string]interface{}{}
     for _, lc := range languageCommits {
         percentage := float64(lc.Commits) / float64(totalCommits) * 100
-        fmt.Printf("%s =>\n", lc.Language)
-        fmt.Printf("Number of total commits in all repos: %d\n", lc.Commits)
-        fmt.Printf("Percentage of total commits: %.2f%%\n", percentage)
-        fmt.Println()
+        languageStats := map[string]interface{}{
+            "language":        lc.Language,
+            "commits_count":   lc.Commits,
+            "commits_percent": fmt.Sprintf("%.2f%%", percentage),
+        }
+        stats = append(stats, languageStats)
     }
+    response["stats"] = stats
+
+    http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+        jsonResponse, err := json.Marshal(response)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        w.Header().Set("Content-Type", "application/json")
+        w.Write(jsonResponse)
+    })
+    
+    http.ListenAndServe(":8080", nil)
 }
