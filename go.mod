@@ -1,4 +1,4 @@
-module readme-stats
+module readme_stats
 
 go 1.19
 
