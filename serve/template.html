@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GitHub Stats</title>
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #chart-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        #pie-chart {
+            margin: 10px;
+        }
+
+        #legend {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid #333;
+        }
+
+        .legend-item > div:last-child {
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-between;
+        }
+        </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <div id="chart-container">
+        <div id="pie-chart"></div>
+        <div id="legend" class="legend-container"></div>
+    </div>
+    <script>
+        // Parse the JSON data passed from the Go server
+        const data = {{.JSONData}};
+
+        const width = 250;
+        const height = 200;
+        const radius = Math.min(width, height) / 2;
+
+        const svg = d3.select("#pie-chart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2},${height / 2})`);
+
+        // Create an ordinal scale for colors
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        // Create a pie layout
+        const pie = d3.pie().value(d => parseFloat(d.commits_percent));
+
+        const arc = d3.arc().innerRadius(0).outerRadius(radius);
+
+        const arcs = svg.selectAll("arc")
+        .data(pie(data.stats))
+        .enter()
+        .append("g");
+
+        arcs.append("path")
+            .attr("d", arc)
+            .attr("fill", (d, i) => color(i))
+            .attr("stroke", "white")
+            .style("stroke-width", "2px");
+
+        const legend = d3.select("#legend")
+        .selectAll("div")
+        .data(data.stats)
+        .enter()
+        .append("div")
+        .attr("class", "legend-item");
+
+        legend
+            .append("div")
+            .attr("class", "legend-color")
+            .style("background-color", (d, i) => color(i));
+
+        legend
+            .append("div")
+            .html(d => `<span style="color:${color(data.stats.indexOf(d))}">${d.language} (${d.commits_percent})</span>`);
+        </script>
+</body>
+</html>

@@ -3,38 +3,59 @@ package serve
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 )
 
 func Serve() {
+	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		urlString := r.URL.String()
+		parsedURL, err := url.Parse(urlString)
+		if err != nil {
+			fmt.Println("Error parsing URL:", err)
+			return
+		}
 
-    http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		username := parsedURL.Query().Get("username")
 
-        urlString := r.URL.String()
+		// Fetch the GraphQL query from GitHub
+		query := fetch(username)
 
-        parsedURL, err := url.Parse(urlString)
-        if err != nil {
-            fmt.Println("Error parsing URL:", err)
-            return
-        }
+		// Collect the commits counts for each language
+		response := collect(query)
 
-        username := parsedURL.Query().Get("username")
+		// Marshal the JSON response
+		jsonResponse, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-        // fetch the GraphQL query from Github
-        query := fetch(username)
+		// Load the HTML template from a file
+		tmpl, err := template.ParseFiles("serve/template.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-        // Collect the commits counts for each language
-        response := collect(query)
+		// Create a JavaScript-safe version of the JSON data
+		jsSafeData := template.JS(jsonResponse)
 
-        jsonResponse, err := json.Marshal(response)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-        w.Header().Set("Content-Type", "application/json")
-        w.Write(jsonResponse)
-    })
+		// Create a data struct for the template
+		data := struct {
+			JSONData template.JS
+		}{
+			JSONData: jsSafeData,
+		}
 
-    http.ListenAndServe(":8080", nil)
+		// Execute the template with data
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+
+	http.ListenAndServe(":8080", nil)
 }

@@ -45,7 +45,7 @@ func collect(query Query) map[string]interface{} {
         languageStats := map[string]interface{}{
             "language":        lc.Language,
             "commits_count":   lc.Commits,
-            "commits_percent": fmt.Sprintf("%.2f%%", percentage),
+            "commits_percent": fmt.Sprintf("%.2f", percentage),
         }
         stats = append(stats, languageStats)
     }
