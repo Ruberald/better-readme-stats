@@ -1,0 +1,50 @@
+{{- $radius := 75.0 -}}
+<svg width="500" height="220" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
+  <rect width="100%" height="100%" fill="#f7f9fc" rx="16"/>
+    <g transform="translate(100,110)">
+      {{- $startAngle := 0.0 -}}
+      {{- range .Stats }}
+          {{- $percent := .CommitsPercent -}}
+          {{- $angle := mul $percent 3.6 -}}
+          {{- $endAngle := add $startAngle $angle -}}
+          {{- $color := index $.Colors .Language -}}
+
+          {{- $angle1 := sub $startAngle 90.0 -}}
+          {{- $angle2 := sub $endAngle 90.0 -}}
+
+          {{- $x1 := mul $radius (cos (deg2rad $angle1)) -}}
+          {{- $y1 := mul $radius (sin (deg2rad $angle1)) -}}
+          {{- $x2 := mul $radius (cos (deg2rad $angle2)) -}}
+          {{- $y2 := mul $radius (sin (deg2rad $angle2)) -}}
+
+          {{- $largeArc := cond (gt $angle 180.0) 1 0 -}}
+
+          <path d="M 0,0 L {{$x1}},{{$y1}} A {{$radius}},{{$radius}} 0 {{$largeArc}},1 {{$x2}},{{$y2}} Z"
+                fill="{{$color}}" stroke="#fff" stroke-width="1"/>
+
+          {{- $startAngle = $endAngle -}}
+      {{- end }}
+    </g>
+
+  <text x="250" y="35" font-size="16" font-weight="600" fill="#333">Top Languages</text>
+
+  {{/* Legend layout constants */}}
+  {{- $legendY := 60.0 -}}
+  {{- $colWidth := 135.0 -}}  {{/* <- added column spacing */}}
+
+  {{/* Legend items */}}
+  {{- range $i, $stat := .Stats }}
+    {{- $row := div $i 2 -}}
+    {{- $col := mod $i 2 -}}
+    {{- $rowF := mul (float64 $row) 1.0 -}}
+    {{- $colF := mul (float64 $col) 1.0 -}}
+    {{- $x := add 200.0 (mul $colF $colWidth) -}}
+    {{- $y := add $legendY (mul $rowF 20.0) -}}
+    {{- $color := index $.Colors (trim .Language) -}}
+
+    <rect x="{{$x}}" y="{{$y}}" width="12" height="12" fill="{{$color}}" rx="2" stroke="#aaa"/>
+    <text x="{{add $x 18.0}}" y="{{add $y 10.0}}" font-size="13" fill="#333">
+      {{$stat.Language}} — {{printf "%.1f" $stat.CommitsPercent}}%
+    </text>
+  {{- end }}
+</svg>

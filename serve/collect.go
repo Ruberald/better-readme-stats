@@ -1,7 +1,6 @@
 package serve
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -10,7 +9,13 @@ type LanguageCommit struct {
     Commits  int
 }
 
-func collect(query Query) map[string]interface{} {
+type Stat struct {
+    Language       string
+    CommitsCount   int
+    CommitsPercent float64
+}
+
+func collect(query Query) []Stat {
     commitCounts := make(map[string]int)
 	totalCommits := 0
 
@@ -37,20 +42,17 @@ func collect(query Query) map[string]interface{} {
         return languageCommits[i].Commits > languageCommits[j].Commits
     })
 
-    response := make(map[string]interface{})
-
-    stats := []map[string]interface{}{}
-
+	var stats []Stat
 	topN := 7
 	othersCommits := 0
 
 	for i, lc := range languageCommits {
 		if i < topN {
-			percentage := float64(lc.Commits) / float64(totalCommits) * 100
-			stats = append(stats, map[string]interface{}{
-				"language":        lc.Language,
-				"commits_count":   lc.Commits,
-				"commits_percent": fmt.Sprintf("%.2f", percentage),
+			percent := float64(lc.Commits) / float64(totalCommits) * 100
+			stats = append(stats, Stat{
+				Language:       lc.Language,
+				CommitsCount:   lc.Commits,
+				CommitsPercent: percent,
 			})
 		} else {
 			othersCommits += lc.Commits
@@ -58,14 +60,13 @@ func collect(query Query) map[string]interface{} {
 	}
 
 	if othersCommits > 0 {
-		percentage := float64(othersCommits) / float64(totalCommits) * 100
-		stats = append(stats, map[string]interface{}{
-			"language":        "Others",
-			"commits_count":   othersCommits,
-			"commits_percent": fmt.Sprintf("%.2f", percentage),
+		percent := float64(othersCommits) / float64(totalCommits) * 100
+		stats = append(stats, Stat{
+			Language:       "Others",
+			CommitsCount:   othersCommits,
+			CommitsPercent: percent,
 		})
 	}
 
-	response["stats"] = stats
-	return response
+	return stats
 }
