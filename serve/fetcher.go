@@ -32,7 +32,7 @@ type Query struct {
                     }
                 }
             }
-        } `graphql:"repositories(first: 100)"`
+		} `graphql:"repositories(first: 100, isFork: false, ownerAffiliations: OWNER)"`
     } `graphql:"user(login: $username)"`
 }
 
