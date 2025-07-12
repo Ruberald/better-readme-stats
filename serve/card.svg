@@ -1,13 +1,153 @@
 {{- $radius := 75.0 -}}
-<svg width="500" height="220" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif">
-  <rect width="100%" height="100%" fill="#f7f9fc" rx="16"/>
-    <g transform="translate(100,110)">
+
+<svg width="500" height="220" class="card-container" xmlns="http://www.w3.org/2000/svg">
+  
+  <style>
+  * { font-family: 'Share Tech Mono', monospace; }
+
+  :root {
+      --bg-color: url(#bg-gradient-light);
+      --border-color: #e4e2e2;
+      --title-color: #24292e;
+      --text-color: #333333;
+      
+    }
+  
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: url(#bg-gradient-dark);
+        --border-color: #21262d;
+        --title-color: #c9d1d9;
+        --text-color: #d1d1d1;
+        --donut-shadow: none;
+      }
+      .title-text { filter: url(#glow); }
+      .card-bg { fill: url(#grid), var(--bg-color); }
+      
+    }
+
+    .tooltip-item {
+      opacity: 0; /* Hidden by default */
+      transition: opacity 0.2s ease-in-out;
+      pointer-events: none; 
+    }
+    .tooltip-text-lang {
+      font-size: 16px;
+      font-weight: 700;
+      fill: var(--title-color);
+    }
+    
+    .tooltip-text-count {
+      font-size: 12px;
+      fill: var(--text-color);
+    }
+
+
+  .card-bg {
+      fill: var(--bg-color);
+      stroke: var(--border-color);
+      stroke-width: 1px;
+    }
+
+    .title-text {
+      fill: var(--title-color);
+    }
+
+    .legend-text {
+      fill: var(--text-color);
+      font-size: 14px;
+    }
+
+  .pie-slice {
+    transition: transform 0.15s ease-in-out;
+  }
+  .pie-slice:hover {
+    transform: scale(1.05);
+    filter: brightness(1.05);
+  }
+
+  .card-container:hover .pie-slice,
+  .card-container:hover .legend-item {
+    opacity: 0.9; 
+    transition: opacity 0.11s ease-in-out, transform 0.11s ease-in-out;
+    
+  }
+
+  .legend-bg {
+      opacity: 0; /* Background is hidden by default */
+      transition: opacity 0.1s ease-in-out;
+      
+    }
+
+  {{- range $i, $_ := .Stats }}
+    {{- $color := default (index $.Colors .Language) "#cccccc" -}}
+
+  .card-container:has(.lang-{{$i}}:hover) .lang-{{$i}}{
+    opacity: 1;
+    transform: scale(1.01);
+    transform-origin: center;
+    stroke: rgba({{ hex2RGB $color }}, 0.5);
+    stroke-width: 0.5px;
+  }
+  
+  .card-container:has(.lang-{{$i}}:hover) .lang-{{$i}} .legend-bg {
+      opacity: 1;    /*Reveals the background on hover*/
+      fill: rgba({{ hex2RGB $color }}, 0.15); 
+      stroke: rgba({{ hex2RGB $color }}, 0.5);
+      stroke-width: 1px;
+    }
+
+  .card-container:has(.lang-{{$i}}:hover) .pie-slice.lang-{{$i}} {
+    opacity: 1;
+    transform: scale(1.01);
+    filter: brightness(1.05);
+
+    stroke: {{$color}};
+    stroke-width: 1.5px;
+    
+  }
+  .card-container:has(.lang-{{$i}}:hover) .tooltip-lang-{{$i}} {
+            opacity: 0.9;
+        }
+
+  {{- end }}
+
+
+  
+  </style>
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0, 255, 255, 0.08)" stroke-width="1"/>
+    </pattern>
+    
+    <!-- A very subtle background gradient -->
+    <linearGradient id="bg-gradient-light" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(255,255,255);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(245,245,245);stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="bg-gradient-dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0A0F1A"/>
+      <stop offset="100%" stop-color="#05070D"/>
+    </linearGradient>
+  </defs>
+ 
+  <rect class="card-bg" width="100%" height="100%" rx="16"/>
+  <text class="title-text" x="225" y="25" font-size="21" font-weight="700" text-anchor="middle">Top Languages</text>
+  <g transform="translate(120,115)">
       {{- $startAngle := 0.0 -}}
-      {{- range .Stats }}
+      {{- range $i, $_ := .Stats  }}
           {{- $percent := .CommitsPercent -}}
           {{- $angle := mul $percent 3.6 -}}
           {{- $endAngle := add $startAngle $angle -}}
-          {{- $color := index $.Colors .Language -}}
+          {{- $color := default (index $.Colors .Language) "#cccccc" -}}
 
           {{- $angle1 := sub $startAngle 90.0 -}}
           {{- $angle2 := sub $endAngle 90.0 -}}
@@ -19,32 +159,49 @@
 
           {{- $largeArc := cond (gt $angle 180.0) 1 0 -}}
 
-          <path d="M 0,0 L {{$x1}},{{$y1}} A {{$radius}},{{$radius}} 0 {{$largeArc}},1 {{$x2}},{{$y2}} Z"
-                fill="{{$color}}" stroke="#fff" stroke-width="1"/>
+          <path class="pie-slice lang-{{$i}}" d="M 0,0 L {{$x1}},{{$y1}} A {{$radius}},{{$radius}} 0 {{$largeArc}},1 {{$x2}},{{$y2}} Z"
+                fill="{{$color}}" stroke="var(--bg-color)" stroke-width="1.5"/>
 
           {{- $startAngle = $endAngle -}}
       {{- end }}
-    </g>
+      <circle cx="0" cy="0" r="40" fill="var(--bg-color)" />
+    </g> 
 
-  <text x="250" y="35" font-size="16" font-weight="600" fill="#333">Top Languages</text>
+    <!-- tooltip -->
+    <g class="tooltips" transform="translate(100, 120)">
+    {{- range $i, $stat := .Stats }}
+      <g class="tooltip-item tooltip-lang-{{$i}}">
+        <!-- <text class="tooltip-text-lang" x="20" y="-10" text-anchor="middle">{{$stat.Language}}</text> -->
+        <text class="tooltip-text-count" x="20" y="0" text-anchor="middle">{{$stat.CommitsCount}} Commits</text>
+      </g>
+    {{- end }}
+  </g>
 
   {{/* Legend layout constants */}}
-  {{- $legendY := 60.0 -}}
-  {{- $colWidth := 135.0 -}}  {{/* <- added column spacing */}}
+  {{- $legendX := 250.0 -}}
+  {{- $lineHeight := 20.0 -}}       
+  {{- $numLangs := len .Stats -}}   
+  {{- $totalLegendHeight := mul (float64 $numLangs) $lineHeight -}} 
+  {{- $verticalCenter := 125.0 -}}
+  {{/*Dynamically calculates the top of the legend based on the number of languages*/}}
+  {{- $legendYStart := sub $verticalCenter (float64 (div (int $totalLegendHeight) 2)) -}}
+
 
   {{/* Legend items */}}
   {{- range $i, $stat := .Stats }}
-    {{- $row := div $i 2 -}}
-    {{- $col := mod $i 2 -}}
-    {{- $rowF := mul (float64 $row) 1.0 -}}
-    {{- $colF := mul (float64 $col) 1.0 -}}
-    {{- $x := add 200.0 (mul $colF $colWidth) -}}
-    {{- $y := add $legendY (mul $rowF 20.0) -}}
-    {{- $color := index $.Colors (trim .Language) -}}
+    {{- $yPos := add $legendYStart (mul (float64 $i) $lineHeight) -}}
+    {{- $color := default (index $.Colors (trim .Language)) "#cccccc" -}}
 
-    <rect x="{{$x}}" y="{{$y}}" width="12" height="12" fill="{{$color}}" rx="2" stroke="#aaa"/>
-    <text x="{{add $x 18.0}}" y="{{add $y 10.0}}" font-size="13" fill="#333">
-      {{$stat.Language}} — {{printf "%.1f" $stat.CommitsPercent}}%
-    </text>
+    {{/* Wrap each legend item in a group for potential hover effects */}}
+    <g class="legend-item lang-{{$i}}">
+    <rect class="legend-bg" x="{{sub $legendX 15}}" y="{{sub $yPos 3}}" width="240" height="{{add $lineHeight 1}}" rx="3" fill="transparent"/>
+      <rect x="{{$legendX}}" y="{{$yPos}}" width="12" height="12" fill="{{$color}}" rx="2"/>
+      <text class="legend-text" x="{{add $legendX 18}}" y="{{add $yPos 11}}" font-size="14" fill="#333">
+       
+        <title>{{$stat.Language}} — {{printf "%.1f" $stat.CommitsPercent}}%</title>  
+        {{- printf "%s - %.1f%%" .Language .CommitsPercent -}} 
+      </text>
+    </g>
+ 
   {{- end }}
 </svg>

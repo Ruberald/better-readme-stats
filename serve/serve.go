@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -13,55 +14,79 @@ import (
 )
 
 type GitHubColor struct {
-    Color string `json:"color"`
+	Color string `json:"color"`
 }
 
 type ViewData struct {
-    Stats  []Stat
-    Colors map[string]string
+	Stats  []Stat
+	Colors map[string]string
+}
+
+// "#RRGGBB" to an RGB string "R, G, B".
+func hexToRGB(hexColor string) string {
+	hexColor = strings.TrimPrefix(hexColor, "#")
+	if len(hexColor) != 6 {
+		return "128, 128, 128" //fallback gray
+	}
+	rgb, err := hex.DecodeString(hexColor)
+	if err != nil {
+		return "128, 128, 128"
+	}
+	return fmt.Sprintf("%d, %d, %d", rgb[0], rgb[1], rgb[2])
 }
 
 func funcMap() template.FuncMap {
-    return template.FuncMap{
-        "add":      func(a, b float64) float64 { return a + b },
-		"sub": func(a, b float64) float64 { return a - b },
-        "mul":      func(a, b float64) float64 { return a * b },
-        "deg2rad":  func(deg float64) float64 { return deg * math.Pi / 180 },
-        "cos":      func(x float64) float64 { return math.Cos(x) },
-        "sin":      func(x float64) float64 { return math.Sin(x) },
-        "mod":      func(a, b int) int { return a % b },
-        "div":      func(a, b int) int { return a / b },
-        "cond":     func(b bool, t, f int) int { if b { return t }; return f },
-        "default":  func(val, fallback string) string {
-            if val == "" {
-                return fallback
-            }
-            return val
-        },
+	return template.FuncMap{
+		"add":     func(a, b float64) float64 { return a + b },
+		"sub":     func(a, b float64) float64 { return a - b },
+		"mul":     func(a, b float64) float64 { return a * b },
+		"deg2rad": func(deg float64) float64 { return deg * math.Pi / 180 },
+		"cos":     func(x float64) float64 { return math.Cos(x) },
+		"sin":     func(x float64) float64 { return math.Sin(x) },
+		"mod":     func(a, b int) int { return a % b },
+		"div":     func(a, b int) int { return a / b },
+		"cond": func(b bool, t, f int) int {
+			if b {
+				return t
+			}
+			return f
+		},
+		"default": func(val, fallback string) string {
+			if val == "" {
+				return fallback
+			}
+			return val
+		},
 		"float64": func(x int) float64 { return float64(x) },
-		"trim": strings.TrimSpace,
-    }
+		"int":     func(x float64) int { return int(x) },
+		"trim":    strings.TrimSpace,
+		"len":     func(x []Stat) int { return len(x) },
+		"hex2RGB": func(hexColor string) string {
+			rgb := hexToRGB(hexColor)
+			return rgb
+		},
+	}
 }
 
 func LoadColorMap(filename string) (map[string]string, error) {
-    bytes, err := os.ReadFile(filename)
-    if err != nil {
-        return nil, err
-    }
+	bytes, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
 
-    // Intermediate map to hold the full JSON structure
-    var raw map[string]GitHubColor
-    if err := json.Unmarshal(bytes, &raw); err != nil {
-        return nil, err
-    }
+	// Intermediate map to hold the full JSON structure
+	var raw map[string]GitHubColor
+	if err := json.Unmarshal(bytes, &raw); err != nil {
+		return nil, err
+	}
 
-    // Convert to a simpler map[string]string
-    colorMap := make(map[string]string)
-    for lang, entry := range raw {
-        colorMap[lang] = entry.Color
-    }
+	// Convert to a simpler map[string]string
+	colorMap := make(map[string]string)
+	for lang, entry := range raw {
+		colorMap[lang] = entry.Color
+	}
 
-    return colorMap, nil
+	return colorMap, nil
 }
 
 func Serve() {
@@ -72,7 +97,7 @@ func Serve() {
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
-		}		
+		}
 
 		fmt.Println("Go :", colors["Go"])
 
@@ -93,7 +118,7 @@ func Serve() {
 
 		// Load the HTML template from a file
 		tmpl, err := template.New("card.svg").
-			Funcs(funcMap()).      // Register functions here
+			Funcs(funcMap()).            // Register functions here
 			ParseFiles("serve/card.svg") // Or Parse(yourTemplateString)
 		if err != nil {
 			log.Fatal(err)
